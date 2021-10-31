@@ -211,3 +211,5 @@ bash -c zsh
 # [[ -s "/home/vkisel/.sdkman/bin/sdkman-init.sh" ]] && source "/home/vkisel/.sdkman/bin/sdkman-init.sh"
 
 # [ -f ~/.fzf.bash ] && source ~/.fzf.bash
+
+
