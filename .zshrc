@@ -146,11 +146,9 @@ NODE_DISTRO=linux-x64
 export PATH=/usr/local/lib/nodejs/node-$NODE_VERSION-$NODE_DISTRO/bin:$PATH
 
 alias k=kubectl
-alias vk='kubectl --kubeconfig ~/vctenant-vkisel-k3s-kubeconfig.yaml'
-alias sk='kubectl --kubeconfig ~/vctenant-second-k3s-kubeconfig.yaml'
 alias pu=pulumi
 
-alias ping_cm_team='echo "PING CM team (2.3.2L) 56(84) bytes of data."; for i in $(seq 1 100); do echo "40 bytes from 2.3.2L: Женщина, вы что не видите что у нас обед icmp_seq=$i ttl=47 time=$((45 + RANDOM % 255)) ms"; sleep 1; done'
+alias ping_cm_team='echo "PING CM team (2.3.2L) 56(84) bytes of data."; time=$((45 + RANDOM % 255)); for i in $(seq 1 100); do echo "40 bytes from 2.3.2L: Женщина, вы что не видите что у нас обед icmp_seq=$i ttl=47 time=$((45 + RANDOM % 255)) ms"; sleep 1.$time; done'
 alias pi='ssh pi@192.168.0.206'
 alias chmox='chmod +x'
 alias dockernotary="notary -s https://notary.external.otc.telekomcloud.com -d ~/.docker/trust"
