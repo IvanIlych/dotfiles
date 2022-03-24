@@ -116,8 +116,13 @@ NeoBundle 'morhetz/gruvbox'
 " NeoBundle 'chriskempson/base16-vim'
 NeoBundle 'nathanaelkane/vim-indent-guides'
 
+NeoBundle 'habamax/vim-asciidoctor'
 " Some support functions used by delimitmate, and snipmate
 " NeoBundle 'vim-scripts/tlib'
+
+NeoBundle 'ctrlpvim/ctrlp.vim'
+
+NeoBundle 'leafgarland/typescript-vim'
 
 " Improve bookmarks in vim
 " Allow word for bookmark marks, and nice quickfix window with bookmark list
@@ -184,7 +189,7 @@ NeoBundle 'nathanaelkane/vim-indent-guides'
 call neobundle#end()
 
 " Enable Indent in plugins
-filetype plugin indent on
+" filetype plugin indent on
 " Enable syntax highlighting
 syntax on
 :map <F7> :if exists("g:syntax_on") <Bar>
@@ -227,9 +232,9 @@ let NERDTreeMinimalUI=1
 let NERDTreeQuitOnOpen=0
 
 " Custom characters for the tree
-" let g:NERDTreeDirArrowExpandable = '[+]'
-" let g:NERDTreeDirArrowCollapsible = '[-]'
-
+let g:NERDTreeDirArrowExpandable = '[+]'
+let g:NERDTreeDirArrowCollapsible = '[-]'
+let g:NERDTreeDirArrows = 1
 " Display current file in the NERDTree ont the left
  nmap <silent> <leader>f :NERDTreeFind<CR>
 
@@ -241,9 +246,9 @@ let NERDTreeQuitOnOpen=0
 " Fugitive
 
 " Blame on current line
-nmap <silent> <leader>gb :.Gblame<cr>
+nmap <silent> <leader>gb :.Git blame<cr>
 " Blame on all lines in the file
-nmap <silent> <leader>b :Gblame<cr>
+nmap <silent> <leader>b :Git blame<cr>
 " Git status
 nmap <silent> <leader>gst :Gstatus<cr>
 " like git add
@@ -326,6 +331,16 @@ set showtabline=2
 
 " map jk to escape
 call arpeggio#map('i', '', 0, 'jk', '<ESC>')
+
+" asciidoc
+
+
+" Fold sections, default `0`.
+let g:asciidoctor_folding = 1
+"
+" " Fold options, default `0`.
+let g:asciidoctor_fold_options = 1
+"
 
 "--------------------------------------------------
 " Colorscheme
@@ -476,7 +491,7 @@ set expandtab
 set smarttab
 
 " number of spaces to use for each step of indent
-set shiftwidth=2
+" set shiftwidth=2
 
 " Number of spaces that a Tab in the file counts for
 set tabstop=2
@@ -587,6 +602,10 @@ let g:ctrlspace_use_mouse_and_arrows=1
 
 " Open new tab
 nmap <leader>to :tabnew
+
+" Resize vertical
+nmap <leader>1 :vertical resize +30<CR>
+nmap <leader>2 :vertical resize -30<CR>
 
 " Replace
 nmap <leader>s :%s//<left>

@@ -292,7 +292,7 @@ prompt_dir() {
       prompt_segment bg magenta "${trimmed_dirname}"
     fi
   else
-    if (( $dir_length < 35 )) && (( $COLUMNS > 100 )); then
+    if (( $dir_length < 35 )) && (( $COLUMNS > 50 )); then
       prompt_segment bg magenta '%~'
     else
       trimmed_dirname=$(print -Pr '%~' | tail -c 33)
@@ -311,34 +311,59 @@ prompt_virtualenv() {
   fi
 }
 
-# Get openshift context; it's slow
-get_openshift_project() {
-  echo $(oc project -q | head -n 1)
+prompt_aws() {
+  if (( $COLUMNS < 50 )) || [[ ! -n $AWS_CURRENT_ROLE ]]; then
+    return
+  else
+    prompt_segment bg green " $AWS_CURRENT_ROLE"
+  fi
 }
 
-# Openshift: current project and whether it match TILEER_NAMESPACE
-prompt_openshift() {
-  if [[ ! -n ${OPENSHIFT_CURRENT_PROJECT} ]] || (( $COLUMNS < 50 )); then return; fi
-    local -a symbols
-  if ${OC_REFRESH_NEEDED} ; then
-    export OPENSHIFT_CURRENT_PROJECT=$(get_openshift_project)
-  fi
-  if [[ "${OPENSHIFT_CURRENT_PROJECT}" == "${TILLER_NAMESPACE}" ]]; then
-    symbols+=" ${OPENSHIFT_CURRENT_PROJECT}"
-    if (( $COLUMNS < 100 )) && (( ${#${OPENSHIFT_CURRENT_PROJECT}} > 20 )); then
-      symbols=$(echo $symbols | tail -c 15)
-      symbols=" ..$symbols"
-    fi
-    prompt_segment bg green $symbols
+prompt_kube() {
+  if (( $COLUMNS < 100 )) || [[ ! -n $KUBE_SHOW ]]; then
+    return
   else
-    if (( $COLUMNS < 100 )); then
-      symbols+=" "
+    if [[ -n $KUBECONFIG ]]; then
+      PROMPT_KUBECONFIG=$KUBECONFIG
     else
-      symbols+="  ${OPENSHIFT_CURRENT_PROJECT} != ${TILLER_NAMESPACE}"
+      PROMPT_KUBECONFIG=/home/vkisel/.kube/config
     fi
-    prompt_segment bg red $symbols
+    KUBE_CLUSTER="$(yq eval '.current-context' $PROMPT_KUBECONFIG)"
+    KUBE_CLUSTER_SHORT="$(echo $KUBE_CLUSTER | cut -d/ -f2)"
+    KUBE_CONTEXT=$(yq eval ".contexts[] | select(.name == \"$KUBE_CLUSTER\") | .context.namespace" $PROMPT_KUBECONFIG)
+    prompt_segment bg blue "⎈ $KUBE_CLUSTER_SHORT | $KUBE_CONTEXT"
+    #prompt_segment bg blue "⎈ $KUBE_CLUSTER"
   fi
 }
+
+# # Get openshift context; it's slow
+# get_openshift_project() {
+#   echo $(oc project -q | head -n 1)
+# }
+# 
+# # Openshift: current project and whether it match TILEER_NAMESPACE
+# prompt_openshift() {
+#   if [[ ! -n ${OPENSHIFT_CURRENT_PROJECT} ]] || (( $COLUMNS < 50 )); then return; fi
+#     local -a symbols
+#   if ${OC_REFRESH_NEEDED} ; then
+#     export OPENSHIFT_CURRENT_PROJECT=$(get_openshift_project)
+#   fi
+#   if [[ "${OPENSHIFT_CURRENT_PROJECT}" == "${TILLER_NAMESPACE}" ]]; then
+#     symbols+=" ${OPENSHIFT_CURRENT_PROJECT}"
+#     if (( $COLUMNS < 100 )) && (( ${#${OPENSHIFT_CURRENT_PROJECT}} > 20 )); then
+#       symbols=$(echo $symbols | tail -c 15)
+#       symbols=" ..$symbols"
+#     fi
+#     prompt_segment bg green $symbols
+#   else
+#     if (( $COLUMNS < 100 )); then
+#       symbols+=" "
+#     else
+#       symbols+="  ${OPENSHIFT_CURRENT_PROJECT} != ${TILLER_NAMESPACE}"
+#     fi
+#     prompt_segment bg red $symbols
+#   fi
+# }
 
 # Status:
 # - was there an error
@@ -378,8 +403,9 @@ build_prompt() {
   prompt_status
   prompt_status_background
   prompt_virtualenv
-  prompt_openshift
-  # prompt_aws
+  # prompt_openshift
+  prompt_aws
+  prompt_kube
   # prompt_context
   prompt_dir
   prompt_git
@@ -399,14 +425,30 @@ build_rprompt() {
 
 preexec() {
   timer=$SECONDS
-  if [[ "$1" == oc* ]]; then
-    if [[ "$1" =~ 'oc project [^-]' ]] || [[ "$1" =~ 'oc login' ]]; then
-      OC_REFRESH_NEEDED=true
-    fi
-    if [[ "$1" == "oc logout" ]]; then
-      OC_REFRESH_NEEDED=false
-      export OPENSHIFT_CURRENT_PROJECT=""
-    fi
+  # if [[ "$1" == oc* ]]; then
+  #   if [[ "$1" =~ 'oc project [^-]' ]] || [[ "$1" =~ 'oc login' ]]; then
+  #     OC_REFRESH_NEEDED=true
+  #     unset AWS_CURRENT_ROLE
+  #     proxy_ru
+  #   fi
+  #   if [[ "$1" == "oc logout" ]]; then
+  #     OC_REFRESH_NEEDED=false
+  #     export OPENSHIFT_CURRENT_PROJECT=""
+  #   fi
+  # fi
+  if [[ "$1" == "cs" ]] || [[ "$1" == "aws"* ]]; then
+    # unset OPENSHIFT_CURRENT_PROJECT
+    # unset OPENSHIFT_REFRESH_NEEDED
+    export AWS_PROFILE=cs
+    AWS_ROLE_REFRESH_NEEDED="true"
+    # if [[ "$1" == aws_login_prod ]]; then
+    #   proxy_bastion_prod
+    # else
+    #   proxy_bastion
+    # fi
+  fi
+  if [[ "$1" == "cluster"* ]] || [[ "$1" == "ns"* ]]; then
+    KUBE_SHOW="true"
   fi
 }
 
@@ -422,12 +464,19 @@ periodic() {
 setopt PROMPT_SUBST
 precmd() {
   RETVAL=$?
+  export scr_capture=$(tmux capture-pane -J -p | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n/ /g'  | sed 's/"//g' | sed "s/'//g" | sed "s/,/ /g" | sed "s/~\/[^\s]*//g")
+  source ~/.zsh/scr_complete.zsh
   if [[ $RETVAL != 0 ]]; then DEFAULT_FG="red"; else export DEFAULT_FG="default"; fi
   echo ""
-  if $OC_REFRESH_NEEDED; then
-    OPENSHIFT_CURRENT_PROJECT=$(get_openshift_project)
-    export TILLER_NAMESPACE="$OPENSHIFT_CURRENT_PROJECT"
-    OC_REFRESH_NEEDED=false
+  # if $OC_REFRESH_NEEDED; then
+  #   OPENSHIFT_CURRENT_PROJECT=$(get_openshift_project)
+  #   export TILLER_NAMESPACE="$OPENSHIFT_CURRENT_PROJECT"
+  #   OC_REFRESH_NEEDED=false
+  # fi
+  if [[ $AWS_ROLE_REFRESH_NEEDED == "true" ]]; then
+    export AWS_ROLE_NUMBER=$(aws sts get-caller-identity | jq .Arn | sed -E 's/^.*:sts::([0-9]*):assumed-role.*$/\1/')
+    AWS_ROLE_REFRESH_NEEDED="false"
+    AWS_CURRENT_ROLE=$AWS_ROLE_NUMBER
   fi
   local LEFT=$(build_prompt)
   # local RIGHT=$(build_rprompt)
@@ -440,5 +489,5 @@ precmd() {
   # print -Pr "%{%k%F{$DEFAULT_FG}%}└───O)))%{%k%f%} $IS_INSIDE_GIT_WORK_TREE"
   # PS1="$LEFT${(l:$num_filler_spaces:: :)}$RIGHT"
   print -Pr $LEFT
-  PS1="%{%k%F{$DEFAULT_FG}%}└───O)))%{%k%f%} "
+  PS1="%{%k%F{$DEFAULT_FG}%}╰───O)))%{%k%f%} "
 }
